@@ -1,0 +1,28 @@
+CREATE DATABASE IF NOT EXISTS prode;
+
+USE prode;
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS partidos (
+    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    equipo_local VARCHAR(50) NOT NULL,
+    equipo_visitante VARCHAR(50) NOT NULL,
+    fase VARCHAR(50) NOT NULL,
+    fecha DATETIME NOT NULL,
+    resultado JSON
+);
+
+CREATE TABLE IF NOT EXISTS predicciones (
+    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_partido INT NOT NULL,
+    local INT NOT NULL,
+    visitante INT NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_partido) REFERENCES partidos(id) ON DELETE CASCADE
+);
