@@ -3,7 +3,7 @@ import mysql.connector
 
 def get_db():
     return mysql.connector.connect(
-        host="localhost", user="root", password="", database="prode"
+        host="localhost", user="root", password="root", database="prode"
     )
 
 
@@ -55,10 +55,31 @@ def eliminar_usuario(id):
     cursor.close()
 
 
-def obtener_partidos():
+def obtener_partidos(limit, offset,equipo, fase, fecha):
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM partidos")
+    query = "SELECT * FROM partidos"
+    conditions = []
+    datos = []
+
+    if equipo:
+        conditions.append("equipo_local = %s OR equipo_visitante = %s")
+        datos.append(equipo)
+        datos.append(equipo)
+    if fase:
+        conditions.append("fase = %s")
+        datos.append(fase)
+    if fecha:
+        conditions.append("fecha = %s")
+        datos.append(fecha)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " ORDER BY id LIMIT %s OFFSET %s"
+    datos.extend([limit, offset])
+
+    cursor.execute(query, tuple(datos))
     partidos = cursor.fetchall()
     cursor.close()
     return partidos
@@ -72,12 +93,37 @@ def buscar_partido(id):
     cursor.close()
     return partido
 
+def contar_partido(equipo, fase, fecha):
+    db = get_db()
+    cursor = db.cursor()
+    query = "SELECT COUNT(*) as total FROM partidos"
+    conditions = []
+    datos = []
+
+    if equipo:
+        conditions.append("equipo_local = %s OR equipo_visitante = %s")
+        datos.append(equipo)
+        datos.append(equipo)
+    if fase:
+        conditions.append("fase = %s")
+        datos.append(fase)
+    if fecha:
+        conditions.append("fecha = %s")
+        datos.append(fecha)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    cursor.execute(query, tuple(datos))
+    total_registros = cursor.fetchone()[0]
+    cursor.close()
+    return total_registros
 
 def crear_partido(local, visitante, fase, fecha):
     db = get_db()
     cursor = db.cursor()
     cursor.execute(
-        "INSERT INTO partidos (local, visitante, fase, fecha) VALUES (%s, %s, %s, %s)",
+        "INSERT INTO partidos (equipo_local, equipo_visitante, fase, fecha) VALUES (%s, %s, %s, %s)",
         (local, visitante, fase, fecha),
     )
     db.commit()

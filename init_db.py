@@ -6,7 +6,7 @@ with open("prode.sql") as f:
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="",
+    password="root",
     database="prode"
 )
 
