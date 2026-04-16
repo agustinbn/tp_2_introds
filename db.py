@@ -1,98 +1,135 @@
-import csv
-import os
-from datetime import datetime
-
-ARCHIVO_CSV = 'db/tareas.csv'
-CAMPOS = ['id', 'titulo', 'descripcion', 'completada', 'created_at']
+import mysql.connector
 
 
-def _inicializar_archivo():
-    if not os.path.exists(ARCHIVO_CSV):
-        with open(ARCHIVO_CSV, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=CAMPOS)
-            writer.writeheader()
+def get_db():
+    return mysql.connector.connect(
+        host="localhost", user="root", password="", database="prode"
+    )
 
 
-def obtener_todas(completada=None, created_at=None):
-    _inicializar_archivo()
-    tareas = []
+def crear_usuario(nombre, email):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO usuarios (nombre, email) VALUES (%s, %s)",
+        (nombre, email),
+    )
+    db.commit()
+    cursor.close()
 
-    with open(ARCHIVO_CSV, mode='r', encoding='utf-8') as file:
-        reader = csv.DictReader(file)
-        for fila in reader:
-            fila['id'] = int(fila['id'])
-            fila['completada'] = fila['completada'] == 'True'
-            tareas.append(fila)
 
-    if completada is not None:
-        tareas = [t for t in tareas if t['completada'] == completada]
+def obtener_usuarios():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM usuarios")
+    usuarios = cursor.fetchall()
+    cursor.close()
+    return usuarios
 
-    if created_at is not None:
-        tareas = [t for t in tareas if t['created_at'].startswith(created_at)]
 
-    return tareas
+def buscar_usuario(id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM usuarios WHERE id = %s", (id,))
+    usuario = cursor.fetchone()
+    cursor.close()
+    return usuario
 
-def _guardar_todas(tareas):
-    with open(ARCHIVO_CSV, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=CAMPOS)
-        writer.writeheader()
-        for tarea in tareas:
-            writer.writerow(tarea)
 
-def obtener_por_id(tarea_id):
-    tareas = obtener_todas()
+def actualizar_usuario(id, nombre, email):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE usuarios SET nombre = %s, email = %s WHERE id = %s",
+        (nombre, email, id),
+    )
+    db.commit()
+    cursor.close()
 
-    for tarea in tareas:
-        if tarea['id'] == tarea_id:
-            return tarea
-        
-    return None
 
-def crear(titulo, descripcion):
-    """Crea una tarea con descripción y fecha automática."""
-    tareas = obtener_todas()
+def eliminar_usuario(id):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM usuarios WHERE id = %s", (id,))
+    db.commit()
+    cursor.close()
 
-    nuevo_id = 1 if not tareas else max(t['id'] for t in tareas) + 1
 
-    nueva_tarea = {
-        'id': nuevo_id, 
-        'titulo': titulo, 
-        'descripcion': descripcion,
-        'completada': False,
-        'created_at': datetime.now().isoformat()
-    }
+def obtener_partidos():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM partidos")
+    partidos = cursor.fetchall()
+    cursor.close()
+    return partidos
 
-    tareas.append(nueva_tarea)
-    _guardar_todas(tareas)
 
-    return nueva_tarea
+def buscar_partido(id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM partidos WHERE id = %s", (id,))
+    partido = cursor.fetchone()
+    cursor.close()
+    return partido
 
-def actualizar(tarea_id, titulo=None, descripcion=None, completada=None):
-    tareas = obtener_todas()
-    tarea_modificada = None
 
-    for tarea in tareas:
-        if tarea['id'] == tarea_id:
-            if titulo is not None:
-                tarea['titulo'] = titulo
-            if descripcion is not None:
-                tarea['descripcion'] = descripcion
-            if completada is not None:
-                tarea['completada'] = completada
-            tarea_modificada = tarea
-            break
+def crear_partido(equipo_local, equipo_visitante, fase, fecha):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO partidos (equipo_local, equipo_visitante, fase, fecha) VALUES (%s, %s, %s, %s)",
+        (equipo_local, equipo_visitante, fase, fecha),
+    )
+    db.commit()
+    cursor.close()
 
-    if tarea_modificada:
-        _guardar_todas(tareas)
 
-    return tarea_modificada
+def actualizar_partido(id, equipo_local, equipo_visitante, fase, fecha):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE partidos SET equipo_local = %s, equipo_visitante = %s, fase = %s, fecha = %s WHERE id = %s",
+        (equipo_local, equipo_visitante, fase, fecha, id),
+    )
+    db.commit()
+    cursor.close()
 
-def eliminar(tarea_id):
-    tareas = obtener_todas()
-    tareas_filtradas = [t for t in tareas if t['id'] != tarea_id]
 
-    if len(tareas) != len(tareas_filtradas):
-        _guardar_todas(tareas_filtradas)
-        return True
-    
-    return False
+# def modificar_partido(id, data):
+#     return id, data
+
+
+def eliminar_partido(id):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM partidos WHERE id = %s", (id,))
+    db.commit()
+    cursor.close()
+
+
+def actualizar_resultado(id, resultado):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("UPDATE partidos SET resultado = %s WHERE id = %s", (resultado, id))
+    db.commit()
+    cursor.close()
+
+
+def buscar_predicciones_por_usuario(id_usuario):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM predicciones WHERE id_usuario = %s", (id_usuario,))
+    predicciones = cursor.fetchall()
+    cursor.close()
+    return predicciones
+
+
+def crear_prediccion(id_usuario, id_partido, goles_local, goles_visitante):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO predicciones (id_usuario, id_partido, local, visitante) VALUES (%s, %s, %s, %s)",
+        (id_usuario, id_partido, goles_local, goles_visitante),
+    )
+    db.commit()
+    cursor.close()
