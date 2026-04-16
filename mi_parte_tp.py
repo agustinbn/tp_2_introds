@@ -3,20 +3,16 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# "Base de datos" en memoria
 partidos = []
 ultimo_id = 0
 
-# =========================
-# POST /partidos
-# =========================
+
 @app.route('/partidos', methods=['POST'])
 def crear_partido():
     global ultimo_id
 
     data = request.get_json()
 
-    # Validar body
     required = ["equipo_local", "equipo_visitante", "fecha", "fase"]
 
     if not data or not all(campo in data for campo in required):
@@ -28,7 +24,7 @@ def crear_partido():
             }]
         }), 400
 
-    # Validar equipos distintos
+    
     if data["equipo_local"] == data["equipo_visitante"]:
         return jsonify({
             "errors": [{
@@ -38,7 +34,7 @@ def crear_partido():
             }]
         }), 400
 
-    # Validar fecha
+    
     try:
         datetime.fromisoformat(data["fecha"])
     except:
@@ -50,7 +46,7 @@ def crear_partido():
             }]
         }), 400
 
-    # Validar fase
+    
     fases_validas = ["grupos", "dieciseisavos", "octavos", "cuartos", "semis", "final"]
 
     if data["fase"] not in fases_validas:
@@ -62,7 +58,7 @@ def crear_partido():
             }]
         }), 400
 
-    # Crear partido
+    
     ultimo_id += 1
 
     nuevo = {
@@ -78,9 +74,7 @@ def crear_partido():
     return jsonify(nuevo), 201
 
 
-# =========================
-# DELETE /partidos/{id}
-# =========================
+
 @app.route('/partidos/<int:id>', methods=['DELETE'])
 def eliminar_partido(id):
     global partidos
@@ -97,10 +91,3 @@ def eliminar_partido(id):
             "level": "error"
         }]
     }), 404
-
-
-# =========================
-# RUN
-# =========================
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
