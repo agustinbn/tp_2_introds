@@ -119,23 +119,23 @@ def contar_partido(equipo, fase, fecha):
     cursor.close()
     return total_registros
 
-def crear_partido(local, visitante, fase, fecha):
+def crear_partido(equipo_local, equipo_visitante, fase, fecha):
     db = get_db()
     cursor = db.cursor()
     cursor.execute(
         "INSERT INTO partidos (equipo_local, equipo_visitante, fase, fecha) VALUES (%s, %s, %s, %s)",
-        (local, visitante, fase, fecha),
+        (equipo_local, equipo_visitante, fase, fecha),
     )
     db.commit()
     cursor.close()
 
 
-def actualizar_partido(id, local, visitante, fase, fecha):
+def actualizar_partido(id, equipo_local, equipo_visitante, fase, fecha):
     db = get_db()
     cursor = db.cursor()
     cursor.execute(
-        "UPDATE partidos SET local = %s, visitante = %s, fase = %s, fecha = %s WHERE id = %s",
-        (local, visitante, fase, fecha, id),
+        "UPDATE partidos SET equipo_local = %s, equipo_visitante = %s, fase = %s, fecha = %s WHERE id = %s",
+        (equipo_local, equipo_visitante, fase, fecha, id),
     )
     db.commit()
     cursor.close()
@@ -179,3 +179,15 @@ def crear_prediccion(id_usuario, id_partido, goles_local, goles_visitante):
     )
     db.commit()
     cursor.close()
+    
+def existe_prediccion( id_usuario, id_partido):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT 1 FROM predicciones WHERE id_usuario = %s AND id_partido = %s",
+        (id_usuario, id_partido))
+    
+    resultado = cursor.fetchone() is not None
+    cursor.close()
+    db.close()
+    return resultado

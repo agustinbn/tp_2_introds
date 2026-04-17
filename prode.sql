@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS partidos (
     equipo_local VARCHAR(50) NOT NULL,
     equipo_visitante VARCHAR(50) NOT NULL,
     fase VARCHAR(50) NOT NULL,
-    fecha DATETIME NOT NULL,
+    fecha DATE NOT NULL,
     resultado JSON
 );
 
