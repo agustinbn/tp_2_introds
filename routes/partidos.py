@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, url_for
+from exceptions import Errores, BadRequestError, NotFoundError
 
 from db import (
     buscar_partido,
