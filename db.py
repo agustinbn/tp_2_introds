@@ -133,3 +133,15 @@ def crear_prediccion(id_usuario, id_partido, goles_local, goles_visitante):
     )
     db.commit()
     cursor.close()
+    
+def existe_prediccion( id_usuario, id_partido):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT 1 FROM predicciones WHERE id_usuario = %s AND id_partido = %s",
+        (id_usuario, id_partido))
+    
+    resultado = cursor.fetchone() is not None
+    cursor.close()
+    db.close()
+    return resultado
