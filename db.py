@@ -179,15 +179,48 @@ def crear_prediccion(id_usuario, id_partido, goles_local, goles_visitante):
     )
     db.commit()
     cursor.close()
-    
+
 def existe_prediccion( id_usuario, id_partido):
     db = get_db()
     cursor = db.cursor()
     cursor.execute(
         "SELECT 1 FROM predicciones WHERE id_usuario = %s AND id_partido = %s",
         (id_usuario, id_partido))
-    
+
     resultado = cursor.fetchone() is not None
     cursor.close()
     db.close()
     return resultado
+
+def obtener_ranking(limit, offset):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    query = """
+    SELECT
+        u.id AS id_usuario,
+        u.nombre,
+        SUM(
+            CASE
+                -- 3 PUNTOS: Acierto Exacto
+                WHEN pr.local = JSON_EXTRACT(pa.resultado, '$.local')
+                 AND pr.visitante = JSON_EXTRACT(pa.resultado, '$.visitante') THEN 3
+
+                -- 1 PUNTO: Acierto Tendencia (Ganador o Empate)
+                WHEN SIGN(pr.local - pr.visitante) = SIGN(JSON_EXTRACT(pa.resultado, '$.local') - JSON_EXTRACT(pa.resultado, '$.visitante')) THEN 1
+
+                ELSE 0
+            END
+        ) AS puntos
+    FROM usuarios u
+    JOIN predicciones pr ON u.id = pr.id_usuario
+    JOIN partidos pa ON pr.id_partido = pa.id
+    WHERE pa.resultado IS NOT NULL
+    GROUP BY u.id
+    ORDER BY puntos DESC
+    LIMIT %s OFFSET %s
+    """
+
+    cursor.execute(query, (limit, offset))
+    ranking = cursor.fetchall()
+    cursor.close()
+    return ranking
