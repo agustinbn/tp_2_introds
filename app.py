@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from routes.partidos import partidos_bp
 from routes.usuarios import usuarios_bp
 from routes.ranking import ranking_bp
-from exceptions import Errores, BadRequestError, NotFoundError
+from exceptions import Errores
 
 app = Flask(__name__)
 
