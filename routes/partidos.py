@@ -228,7 +228,7 @@ def delete_partido(id):
  
 @partidos_bp.route("/<int:id>/resultado", methods=["PUT"])
 def update_resultado(id):
-     data = request.get_json()
+    data = request.get_json()
     if not data:
         raise BadRequestError( message="Datos requeridos", description="No se pudo completar la solicitud debido a la falta de datos en el cuerpo de la solicitud.")
     if "local" not in data or "visitante" not in data:
