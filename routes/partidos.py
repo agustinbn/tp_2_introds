@@ -42,13 +42,6 @@ def get_partidos():
                 description="No se encontraron partidos que coincidan con los filtros especificados.",
             )
         partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
-        # partidos, total = obtener_partidos_filtrados(
-        #     equipo=equipo,
-        #     fecha=fecha,
-        #     fase=fase,
-        #     limit=limit,
-        #     offset=offset,
-        # )
     except Exception as e:
         if isinstance(e, (BadRequestError, NotFoundError)):
             raise e
@@ -86,6 +79,9 @@ def get_partidos():
             fecha=fecha,
             _external=True,
         )
+
+    for partido in partidos:
+        partido.pop("resultado")
 
     return jsonify(
         {
