@@ -4,10 +4,7 @@ with open("prode.sql") as f:
     sql = f.read()
 
 db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="root",
-    database="prode"
+    host="localhost", user="root", password="root", database="prode"
 )
 
 cursor = db.cursor()

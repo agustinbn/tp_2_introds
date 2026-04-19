@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, url_for
@@ -181,6 +182,9 @@ def get_partido(id):
 
     if partido.get("fecha"):
         partido["fecha"] = str(partido["fecha"])
+
+    if partido.get("resultado"):
+        partido["resultado"] = json.loads(partido["resultado"])
 
     return jsonify(partido), 200
 
