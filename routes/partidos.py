@@ -1,7 +1,7 @@
 from datetime import datetime
  
 from flask import Blueprint, jsonify, request, url_for
-from exceptions import Errores, BadRequestError, NotFoundError
+from exceptions import Errores, BadRequestError, NotFoundError, ConflictError
  
 from db import (
     buscar_partido,
@@ -11,8 +11,7 @@ from db import (
     eliminar_partido,
     existe_prediccion,
     contar_partido,
-    obtener_partidos,
-    obtener_partidos_filtrados,
+    obtener_partidos
 )
  
 partidos_bp = Blueprint("partidos", __name__)
@@ -36,15 +35,15 @@ def get_partidos():
         total_registros = contar_partido(equipo, fase, fecha)
 
         if total_registros == 0:
-            raise NotFoundError( message="No hay resultados", description=f"No se encontraron partidos para el equipo '{equipo}' en la fase '{fase}'.")
-        # partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
-        partidos, total = obtener_partidos_filtrados(
-            equipo=equipo,
-            fecha=fecha,
-            fase=fase,
-            limit=limit,
-            offset=offset,
-        )
+            raise NotFoundError( message="No hay resultados", description=f"No se encontraron partidos que coincidan con los filtros especificados.")
+        partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
+        # partidos, total = obtener_partidos_filtrados(
+        #     equipo=equipo,
+        #     fecha=fecha,
+        #     fase=fase,
+        #     limit=limit,
+        #     offset=offset,
+        # )
     except Exception as e:
         if isinstance(e, (BadRequestError, NotFoundError)):
             raise e
@@ -109,7 +108,7 @@ def create_partido():
     except Exception as e:
         raise Errores("Error interno al crear el partido")
 
-    return jsonify(data), 201
+    return "",201
  
  
 @partidos_bp.route("/<int:id>", methods=["GET"])
