@@ -26,6 +26,30 @@ def get_ranking():
 
     total_registros = len(ranking)
 
+    prev_url = None
+    prev_url = url_for(
+        "ranking.get_ranking",
+        _offset=max(0, offset - limit),
+        _limit=limit,
+        _external=True,
+    )
+
+    next_url = None
+    if offset < total_registros - limit:
+        next_url = url_for(
+            "ranking.get_ranking",
+            _offset=offset + limit,
+            _limit=limit,
+            _external=True,
+        )
+    else:
+        next_url = url_for(
+            "ranking.get_ranking",
+            _offset=max(0, ((total_registros - 1) // limit) * limit),
+            _limit=limit,
+            _external=True,
+        )
+
     return jsonify(
         {
             "ranking": ranking,

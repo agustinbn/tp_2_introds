@@ -1,3 +1,4 @@
+import json
 import mysql.connector
 
 
@@ -156,7 +157,10 @@ def eliminar_partido(id):
 def actualizar_resultado(id, resultado):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("UPDATE partidos SET resultado = %s WHERE id = %s", (resultado, id))
+    cursor.execute(
+        "UPDATE partidos SET resultado = %s WHERE id = %s",
+        (json.dumps(resultado), id),
+    )
     db.commit()
     cursor.close()
 

@@ -372,13 +372,10 @@ def update_resultado(id):
     return "", 204
 
 
-predicciones_bp = Blueprint("predicciones", __name__)
-
-
-@predicciones_bp.route("/partidos/<int:partido_id>/prediccion", methods=["POST"])
+@partidos_bp.route("/<int:partido_id>/prediccion", methods=["POST"])
 def create_prediccion(partido_id):
     data = request.get_json()
-    usuario_id = data.get("usuario_id")
+    usuario_id = data.get("id_usuario")
     goles_local = data.get("local")
     goles_visitante = data.get("visitante")
     if usuario_id is None or goles_local is None or goles_visitante is None:

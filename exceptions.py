@@ -19,7 +19,6 @@ class Errores(Exception):
             ]
         }
 
-# Subclases específicas
 class BadRequestError(Errores):
     def __init__(self, message, description=None):
         super().__init__(message, code="BAD_REQUEST", description=description, status_code=400)
