@@ -1,8 +1,8 @@
 from datetime import datetime
-
+ 
 from flask import Blueprint, jsonify, request, url_for
 from exceptions import Errores, BadRequestError, NotFoundError
-
+ 
 from db import (
     buscar_partido,
     buscar_usuario,
@@ -12,11 +12,12 @@ from db import (
     existe_prediccion,
     contar_partido,
     obtener_partidos,
+    obtener_partidos_filtrados,
 )
-
+ 
 partidos_bp = Blueprint("partidos", __name__)
-
-
+ 
+ 
 @partidos_bp.route("/", methods=["GET"])
 def get_partidos():
     offset = request.args.get('_offset', 0, type=int)
@@ -27,16 +28,23 @@ def get_partidos():
     if offset < 0:
         raise BadRequestError("El offset no puede ser negativo")
 
-    equipo = request.args.get('equipo', None, type=str)
-    fase = request.args.get('fase', None, type=str)
-    fecha = request.args.get('fecha', None, type=str)
+    equipo = request.args.get("equipo")   # filtra local O visitante
+    fecha  = request.args.get("fecha")    # formato: YYYY-MM-DD
+    fase   = request.args.get("fase")
 
     try:
         total_registros = contar_partido(equipo, fase, fecha)
 
         if total_registros == 0:
             raise NotFoundError( message="No hay resultados", description=f"No se encontraron partidos para el equipo '{equipo}' en la fase '{fase}'.")
-        partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
+        # partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
+        partidos, total = obtener_partidos_filtrados(
+            equipo=equipo,
+            fecha=fecha,
+            fase=fase,
+            limit=limit,
+            offset=offset,
+        )
     except Exception as e:
         if isinstance(e, (BadRequestError, NotFoundError)):
             raise e
@@ -75,9 +83,9 @@ def get_partidos():
 @partidos_bp.route("/", methods=["POST"])
 def create_partido():
     data = request.get_json()
-
+ 
     required = ["equipo_local", "equipo_visitante", "fecha", "fase"]
-
+ 
     if not data or not all(campo in data for campo in required):
         raise BadRequestError( message="Faltan campos obligatorios", description=f"No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos que pueden ser {', '.join(required)}.")
 
@@ -92,7 +100,7 @@ def create_partido():
         raise BadRequestError( message="Fecha inválida", description="El formato de la fecha es inválido.")
 
     fases_validas = ["grupos", "dieciseisavos", "octavos", "cuartos", "semis", "final"]
-
+ 
     if data["fase"] not in fases_validas:
         raise BadRequestError( message="Fase inválida", description="La fase especificada no es válida.")
 
@@ -102,19 +110,22 @@ def create_partido():
         raise Errores("Error interno al crear el partido")
 
     return jsonify(data), 201
-
-
+ 
+ 
 @partidos_bp.route("/<int:id>", methods=["GET"])
 def get_partido(id):
     try:
-        partidos = buscar_partido(id)
+        partido = buscar_partido(id)
     except Exception as e:
         raise Errores("Error interno al obtener el partido")
 
-    if not partidos:
+    if partido is None:
         raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
+    
+    if partido.get("fecha"):
+        partido["fecha"] = str(partido["fecha"])
 
-    return jsonify(partidos), 200
+    return jsonify(partido), 200
 
 
 @partidos_bp.route("/<int:id>", methods=["PUT"])
@@ -159,12 +170,12 @@ def update_partido(id):
 @partidos_bp.route("/<int:id>", methods=["PATCH"])
 def patch_partido(id):
     return "Hello, World!"
-
-
+ 
+ 
 @partidos_bp.route("/<int:id>", methods=["DELETE"])
 def delete_partido(id):
     partido = buscar_partido(id)
-
+ 
     if not partido:
         raise NotFoundError( message="Partido no encontrado", description=f"No se encontraron partidos con el id {id}.")
 
@@ -174,16 +185,16 @@ def delete_partido(id):
         raise Errores("Error interno al eliminar el partido")
 
     return jsonify({}), 204
-
-
+ 
+ 
 @partidos_bp.route("/<int:id>/resultado", methods=["PUT"])
 def update_resultado(id):
     return "Hello, World!"
-
-
+ 
+ 
 predicciones_bp = Blueprint("predicciones", __name__)
-
-
+ 
+ 
 @predicciones_bp.route("/partidos/<int:partido_id>/prediccion", methods=["POST"])
 def create_prediccion(partido_id):
     data = request.get_json()
