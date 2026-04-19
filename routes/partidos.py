@@ -106,12 +106,54 @@ def create_partido():
 
 @partidos_bp.route("/<int:id>", methods=["GET"])
 def get_partido(id):
-    return "Hello, World!"
+    try:
+        partidos = buscar_partido(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el partido")
+
+    if not partidos:
+        raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
+
+    return jsonify(partidos), 200
 
 
 @partidos_bp.route("/<int:id>", methods=["PUT"])
 def update_partido(id):
-    return "Hello, World!"
+    data = request.get_json()
+
+    required = ["equipo_local", "equipo_visitante", "fecha", "fase"]
+
+    if not data or not all(campo in data for campo in required):
+        raise BadRequestError( message="Faltan campos obligatorios", description=f"No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos que pueden ser {', '.join(required)}.")
+
+    if data["equipo_local"] == data["equipo_visitante"]:
+        raise ConflictError( message="Los equipos no pueden ser iguales", description="El equipo local y el equipo visitante no pueden ser el mismo.")
+
+    try:
+        fecha = datetime.fromisoformat(
+            str(data["fecha"]).strip().replace("Z", "+00:00")
+        ).date()
+    except ValueError:
+        raise BadRequestError( message="Fecha inválida", description="El formato de la fecha es inválido.")
+
+    fases_validas = ["grupos", "dieciseisavos", "octavos", "cuartos", "semis", "final"]
+
+    if data["fase"] not in fases_validas:
+        raise BadRequestError( message="Fase inválida", description="La fase especificada no es válida.")
+
+    try:
+        partido = buscar_partido(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el partido")
+
+    if not partido:
+        raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
+
+    try:
+        actualizar_partido(id, data["equipo_local"], data["equipo_visitante"], data["fase"], fecha)
+    except Exception as e:
+        raise Errores("Error interno al actualizar el partido")
+    return jsonify(partido), 200
 
 
 @partidos_bp.route("/<int:id>", methods=["PATCH"])
