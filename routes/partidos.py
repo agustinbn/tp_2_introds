@@ -10,6 +10,8 @@ from db import (
     crear_prediccion,
     eliminar_partido,
     existe_prediccion,
+    contar_partido,
+    obtener_partidos,
 )
 
 partidos_bp = Blueprint("partidos", __name__)
@@ -30,18 +32,15 @@ def get_partidos():
     fecha = request.args.get('fecha', None, type=str)
 
     try:
-        total_registros = db.contar_partido(equipo, fase, fecha)
+        total_registros = contar_partido(equipo, fase, fecha)
 
         if total_registros == 0:
-            raise NotFoundError(
-                message="No hay resultados",
-                description=f"No se encontraron partidos para el equipo '{equipo}' en la fase '{fase}'."
-            )
-        partidos = db.obtener_partidos(limit, offset, equipo, fase, fecha)
+            raise NotFoundError( message="No hay resultados", description=f"No se encontraron partidos para el equipo '{equipo}' en la fase '{fase}'.")
+        partidos = obtener_partidos(limit, offset, equipo, fase, fecha)
     except Exception as e:
         if isinstance(e, (BadRequestError, NotFoundError)):
             raise e
-        raise Errores("Error interno al consultar la base de datos", status_code=500)
+        raise Errores("Error interno al consultar la base de datos")
 
     total_paginas = (total_registros + limit - 1) // limit
 
@@ -80,56 +79,27 @@ def create_partido():
     required = ["equipo_local", "equipo_visitante", "fecha", "fase"]
 
     if not data or not all(campo in data for campo in required):
-        return jsonify(
-            {
-                "errors": [
-                    {
-                        "code": "400",
-                        "message": "Faltan campos obligatorios",
-                        "level": "error",
-                    }
-                ]
-            }
-        ), 400
+        raise BadRequestError( message="Faltan campos obligatorios", description=f"No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos que pueden ser {', '.join(required)}.")
 
     if data["equipo_local"] == data["equipo_visitante"]:
-        return jsonify(
-            {
-                "errors": [
-                    {
-                        "code": "400",
-                        "message": "Los equipos no pueden ser iguales",
-                        "level": "error",
-                    }
-                ]
-            }
-        ), 400
+        raise ConflictError( message="Los equipos no pueden ser iguales", description="El equipo local y el equipo visitante no pueden ser el mismo.")
 
     try:
         fecha = datetime.fromisoformat(
             str(data["fecha"]).strip().replace("Z", "+00:00")
         ).date()
     except ValueError:
-        return jsonify(
-            {
-                "errors": [
-                    {
-                        "code": "400",
-                        "message": "Fecha inválida",
-                        "level": "error",
-                    }
-                ]
-            }
-        ), 400
+        raise BadRequestError( message="Fecha inválida", description="El formato de la fecha es inválido.")
 
     fases_validas = ["grupos", "dieciseisavos", "octavos", "cuartos", "semis", "final"]
 
     if data["fase"] not in fases_validas:
-        return jsonify(
-            {"errors": [{"code": "400", "message": "Fase inválida", "level": "error"}]}
-        ), 400
+        raise BadRequestError( message="Fase inválida", description="La fase especificada no es válida.")
 
-    crear_partido(data["equipo_local"], data["equipo_visitante"], data["fase"], fecha)
+    try:
+        crear_partido(data["equipo_local"], data["equipo_visitante"], data["fase"], fecha)
+    except Exception as e:
+        raise Errores("Error interno al crear el partido")
 
     return jsonify(data), 201
 
@@ -154,19 +124,12 @@ def delete_partido(id):
     partido = buscar_partido(id)
 
     if not partido:
-        return jsonify(
-            {
-                "errors": [
-                    {
-                        "code": "404",
-                        "message": "Partido no encontrado",
-                        "level": "error",
-                    }
-                ]
-            }
-        ), 404
+        raise NotFoundError( message="Partido no encontrado", description=f"No se encontraron partidos con el id {id}.")
 
-    eliminar_partido(id)
+    try:
+        eliminar_partido(id)
+    except Exception as e:
+        raise Errores("Error interno al eliminar el partido")
 
     return jsonify({}), 204
 
@@ -186,24 +149,28 @@ def create_prediccion(partido_id):
     goles_local = data.get("local")
     goles_visitante = data.get("visitante")
     if usuario_id is None or goles_local is None or goles_visitante is None:
-        return {"error": "faltan datos"}, 400
+        raise BadRequestError( message="Faltan campos obligatorios", description="No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos que pueden ser usuario_id, local y visitante.")
     if goles_local < 0 or goles_visitante < 0:
-        return {"error": "Los goles no pueden ser negativos"}, 400
+        raise BadRequestError( message="Goles inválidos", description="Los goles no pueden ser negativos.")
 
     partido = buscar_partido(partido_id)
     if not partido:
-        return {"error": "Partido no encontrado"}, 404
+        raise NotFoundError( message="Partido no encontrado", description=f"No se encontraron partidos con el id {partido_id}.")
 
     partido_jugado = partido["resultado"] is not None
     if partido_jugado:
-        return {"error": "Este partido ya esta jugado y no puede ser predecido"}, 400
+        raise ConflictError( message="Partido ya jugado", description="Este partido ya esta jugado y no puede ser predecido.")
 
     usuario = buscar_usuario(usuario_id)
     if not usuario:
-        return {"error": "Usuario no encontrado"}, 404
+        raise NotFoundError( message="Usuario no encontrado", description=f"No se encontraron usuarios con el id {usuario_id}.")
 
     if existe_prediccion(usuario_id, partido_id):
-        return {"error": "Ya existe una prediccion para este partido"}, 409
+        raise ConflictError( message="Prediccion ya existe", description="Ya existe una prediccion para este partido.")
 
-    crear_prediccion(usuario_id, partido_id, goles_local, goles_visitante)
+    try:
+        crear_prediccion(usuario_id, partido_id, goles_local, goles_visitante)
+    except Exception as e:
+        raise Errores("Error interno al crear la prediccion")
+
     return {"mensaje": "prediccion creada"}, 201

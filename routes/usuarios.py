@@ -22,7 +22,11 @@ def get_usuarios():
     if offset < 0:
         raise BadRequestError("El offset no puede ser negativo")
 
-    usuarios = obtener_usuarios()
+    try:
+        usuarios = obtener_usuarios()
+    except Exception as e:
+        raise Errores("Error interno al consultar la base de datos")
+
     total_registros = len(usuarios)
 
     if not usuarios:
@@ -67,18 +71,25 @@ def create_usuario():
     email = data.get("email")
 
     if nombre is None or email is None:
-        return "Nombre y email son requeridos", 400
+        raise BadRequestError("Nombre y email son requeridos")
 
-    crear_usuario(nombre, email)
+    try:
+        crear_usuario(nombre, email)
+    except Exception as e:
+        raise Errores("Error interno al crear el usuario")
+
     return "", 201
 
 
 @usuarios_bp.route("/<int:id>", methods=["GET"])
 def get_usuario(id):
-    usuario = buscar_usuario(id)
+    try:
+        usuario = buscar_usuario(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el usuario")
 
     if not usuario:
-        return jsonify({}), 404
+        raise NotFoundError("Usuario no encontrado", description=f"No se encontró un usuario con el ID {id}")
 
     return jsonify(usuario), 200
 
@@ -90,26 +101,38 @@ def update_usuario(id):
     email = data.get("email")
 
     if nombre is None or email is None:
-        return "Nombre y email son requeridos", 400
+        raise BadRequestError("Nombre y email son requeridos")
 
-    usuario = buscar_usuario(id)
+    try:
+        usuario = buscar_usuario(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el usuario")
 
     if not usuario:
-        return jsonify({}), 404
+        raise NotFoundError("Usuario no encontrado", description=f"No se encontró un usuario con el ID {id}")
 
-    actualizar_usuario(id, nombre, email)
+    try:
+        actualizar_usuario(id, nombre, email)
+    except Exception as e:
+        raise Errores("Error interno al actualizar el usuario")
     return jsonify(usuario), 200
 
 
 @usuarios_bp.route("/<int:id>", methods=["DELETE"])
 def delete_usuario(id):
-    usuario = buscar_usuario(id)
-
     if id is None:
-        return jsonify({}), 400
+        raise BadRequestError("ID es requerido")
+
+    try:
+        usuario = buscar_usuario(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el usuario")
 
     if not usuario:
-        return jsonify({}), 404
+        raise NotFoundError("Usuario no encontrado", description=f"No se encontró un usuario con el ID {id}")
 
-    eliminar_usuario(id)
-    return "Hello, World!"
+    try:
+        eliminar_usuario(id)
+    except Exception as e:
+        raise Errores("Error interno al eliminar el usuario")
+    return "", 204

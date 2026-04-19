@@ -75,7 +75,7 @@ def obtener_partidos(limit, offset,equipo, fase, fecha):
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
-    
+
     query += " ORDER BY id LIMIT %s OFFSET %s"
     datos.extend([limit, offset])
 
