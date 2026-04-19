@@ -11,7 +11,7 @@ from db import (
     eliminar_partido,
     existe_prediccion,
     contar_partido,
-    obtener_partidos
+    obtener_partidos,
     actualizar_partido,
     actualizar_resultado,
 )
@@ -110,11 +110,14 @@ def create_partido():
     except Exception as e:
         raise Errores("Error interno al crear el partido")
 
-    return "",201
+    return "", 201
  
  
-@partidos_bp.route("/<int:id>", methods=["GET"])
+@partidos_bp.route("/<id>", methods=["GET"])
 def get_partido(id):
+    if not id.isdigit():
+        raise BadRequestError( message="ID inválido", description="El ID del partido debe ser un número entero.")
+
     try:
         partido = buscar_partido(id)
     except Exception as e:
@@ -141,7 +144,7 @@ def update_partido(id):
         raise BadRequestError( message="Faltan campos obligatorios", description=f"No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos que pueden ser {', '.join(required)}.")
 
     if data["equipo_local"] == data["equipo_visitante"]:
-        raise ConflictError( message="Los equipos no pueden ser iguales", description="El equipo local y el equipo visitante no pueden ser el mismo.")
+        raise BadRequestError( message="Los equipos no pueden ser iguales", description="El equipo local y el equipo visitante no pueden ser el mismo.")
 
     try:
         fecha = datetime.fromisoformat(str(data["fecha"]).strip().replace("Z", "+00:00")).date()
@@ -158,7 +161,7 @@ def update_partido(id):
         raise Errores("Error interno al obtener el partido")
 
     if not partido:
-        raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
+        raise BadRequestError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
 
     try:
         actualizar_partido(id, data["equipo_local"], data["equipo_visitante"], data["fase"], fecha)
@@ -171,11 +174,11 @@ def update_partido(id):
 def patch_partido(id):
     partido = buscar_partido(id)
     if partido is None:
-        return jsonify({"errors": [{"code": "404", "message": "Partido no encontrado", "level": "error"}]}), 404
+        raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
 
     data = request.get_json()
     if not data:
-        return jsonify({"errors": [{"code": "400", "message": "Datos requeridos", "level": "error"}]}), 400
+        raise BadRequestError( message="Datos requeridos", description="No se pudo completar la solicitud debido a la falta de datos en el cuerpo de la solicitud.")
 
     # Get current values
     equipo_local = data.get("equipo_local", partido["equipo_local"])
@@ -185,30 +188,33 @@ def patch_partido(id):
 
     # Validate
     if equipo_local == equipo_visitante:
-        return jsonify({"errors": [{"code": "400", "message": "Los equipos no pueden ser iguales", "level": "error"}]}), 400
+        raise BadRequestError( message="Los equipos no pueden ser iguales", description="El equipo local y el equipo visitante no pueden ser el mismo.")
 
     try:
         fecha = datetime.fromisoformat(str(fecha_str).strip().replace("Z", "+00:00")).date()
     except ValueError:
-        return jsonify({"errors": [{"code": "400", "message": "Fecha inválida", "level": "error"}]}), 400
+        raise BadRequestError( message="Fecha inválida", description="El formato de la fecha es inválido.")
 
     fases_validas = ["grupos", "dieciseisavos", "octavos", "cuartos", "semis", "final"]
     if fase not in fases_validas:
-        return jsonify({"errors": [{"code": "400", "message": "Fase inválida", "level": "error"}]}), 400
+        raise BadRequestError( message="Fase inválida", description="La fase especificada no es válida.")
 
-    actualizar_partido(id, equipo_local, equipo_visitante, fase, fecha)
-
-    # Return the updated partido
-    updated_partido = buscar_partido(id)
-    if updated_partido.get("fecha"):
-        updated_partido["fecha"] = str(updated_partido["fecha"])
-    return jsonify(updated_partido), 200
+    try:
+        actualizar_partido(id, equipo_local, equipo_visitante, fase, fecha)
+    except Exception as e:
+        raise Errores("Error interno al actualizar el partido")
+    return "", 204
  
  
-@partidos_bp.route("/<int:id>", methods=["DELETE"])
+@partidos_bp.route("/<id>", methods=["DELETE"])
 def delete_partido(id):
-    partido = buscar_partido(id)
- 
+    if not id.isdigit():
+        raise BadRequestError( message="ID inválido", description="El ID del partido debe ser un número entero.")
+    try:
+        partido = buscar_partido(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el partido")
+
     if not partido:
         raise NotFoundError( message="Partido no encontrado", description=f"No se encontraron partidos con el id {id}.")
 
@@ -222,33 +228,35 @@ def delete_partido(id):
  
 @partidos_bp.route("/<int:id>/resultado", methods=["PUT"])
 def update_resultado(id):
-    partido = buscar_partido(id)
-    if partido is None:
-        return jsonify({"errors": [{"code": "404", "message": "Partido no encontrado", "level": "error"}]}), 404
-
-    data = request.get_json()
+     data = request.get_json()
     if not data:
-        return jsonify({"errors": [{"code": "400", "message": "Datos requeridos", "level": "error"}]}), 400
-
+        raise BadRequestError( message="Datos requeridos", description="No se pudo completar la solicitud debido a la falta de datos en el cuerpo de la solicitud.")
     if "local" not in data or "visitante" not in data:
-        return jsonify({"errors": [{"code": "400", "message": "Faltan campos local y visitante", "level": "error"}]}), 400
+        raise BadRequestError( message="Faltan campos local y visitante", description="No se pudo completar la solicitud debido a la falta de uno/s de los campos requeridos.")
+
+    try:
+        partido = buscar_partido(id)
+    except Exception as e:
+        raise Errores("Error interno al obtener el partido")
+    if partido is None:
+        raise NotFoundError("Partido no encontrado", description=f"No se encontró un partido con el ID {id}")
 
     try:
         local = int(data["local"])
         visitante = int(data["visitante"])
         if local < 0 or visitante < 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return jsonify({"errors": [{"code": "400", "message": "Goles deben ser enteros no negativos", "level": "error"}]}), 400
+            raise BadRequestError( message="Goles inválidos", description="Los goles no pueden ser negativos.")
+    except Exception as e:
+        raise BadRequestError( message="Goles inválidos", description="Los goles deben ser enteros no negativos.")
 
     resultado = {"local": local, "visitante": visitante}
-    actualizar_resultado(id, resultado)
 
-    # Return the updated partido
-    updated_partido = buscar_partido(id)
-    if updated_partido.get("fecha"):
-        updated_partido["fecha"] = str(updated_partido["fecha"])
-    return jsonify(updated_partido), 200
+    try:
+        actualizar_resultado(id, resultado)
+    except Exception as e:
+        raise Errores("Error interno al actualizar el resultado")
+
+    return jsonify(updated_partido), 204
  
  
 predicciones_bp = Blueprint("predicciones", __name__)
@@ -285,4 +293,4 @@ def create_prediccion(partido_id):
     except Exception as e:
         raise Errores("Error interno al crear la prediccion")
 
-    return {"mensaje": "prediccion creada"}, 201
+    return "", 201

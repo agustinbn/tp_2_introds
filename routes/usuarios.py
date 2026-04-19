@@ -91,7 +91,7 @@ def get_usuario(id):
     if not usuario:
         raise NotFoundError("Usuario no encontrado", description=f"No se encontró un usuario con el ID {id}")
 
-    return jsonify(usuario), 200
+    return jsonify(usuario), 201
 
 
 @usuarios_bp.route("/<int:id>", methods=["PUT"])
@@ -115,7 +115,7 @@ def update_usuario(id):
         actualizar_usuario(id, nombre, email)
     except Exception as e:
         raise Errores("Error interno al actualizar el usuario")
-    return jsonify(usuario), 200
+    return jsonify(usuario), 204
 
 
 @usuarios_bp.route("/<int:id>", methods=["DELETE"])
